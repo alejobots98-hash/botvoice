@@ -14,58 +14,61 @@ client.on('ready', () => {
 });
 
 client.on('messageCreate', async (message) => {
-    // Para ver en Railway si el bot lee los mensajes
-    if (!message.author.bot) {
-        console.log(`Mensaje: ${message.content} | De: ${message.author.tag}`);
-    }
+    if (message.author.bot) return;
 
-    if (message.content.startsWith('!create') && !message.author.bot) {
-        const rolesAutorizados = ['408904612310024192', '1495957842186735727'];
+    if (message.content.startsWith('!create')) {
         
-        // Verifica si el usuario tiene el rol
-        const tienePermiso = message.member.roles.cache.some(role => rolesAutorizados.includes(role.id));
+        // --- CONFIGURACIÓN ---
+        const rolesAutorizados = ['1211760228673257524', '1494517342242340864'];
+        const ownerID = message.guild.ownerId; // Detecta automáticamente al dueño del server
+        
+        const tieneRol = message.member.roles.cache.some(role => rolesAutorizados.includes(role.id));
+        const esOwner = message.author.id === ownerID;
 
-        if (!tienePermiso) {
-            console.log(`Acceso denegado para: ${message.author.tag}`);
-            return;
+        // LOG DE SEGURIDAD PARA RAILWAY
+        console.log(`Intento de: ${message.author.tag} | ID: ${message.author.id} | Es Owner: ${esOwner} | Tiene Rol: ${tieneRol}`);
+
+        // Si no es el dueño Y no tiene el rol, afuera.
+        if (!esOwner && !tieneRol) {
+            console.log(`❌ Denegado para ${message.author.tag}. No es owner ni tiene los roles.`);
+            return; 
         }
 
         const args = message.content.split(' ');
-        const nombreCanal = args.slice(1).join('-'); // Une el nombre si ponen espacios
+        const nombreCanal = args.slice(1).join('-'); 
 
         if (!nombreCanal) {
-            return message.reply("⚠️ Indica el nombre: `!create babasonico22`.");
+            return message.reply("⚠️ Indica el nombre: `!create nombre`.");
         }
 
-        const categoriaID = '1390861046658498671';
+        const aviso = await message.reply("⏳ Creando vc vaganciero...");
 
         try {
             const canalCreado = await message.guild.channels.create({
                 name: nombreCanal,
                 type: ChannelType.GuildText,
-                parent: categoriaID,
+                parent: '1390861046658498671',
                 permissionOverwrites: [
                     {
-                        id: message.guild.id, // Bloquea @everyone
+                        id: message.guild.id, 
                         deny: [PermissionFlagsBits.ViewChannel],
                     },
                     {
-                        id: message.author.id, // Permite al autor
+                        id: message.author.id, 
                         allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
                     },
                     {
-                        id: client.user.id, // Permite al bot
+                        id: client.user.id, 
                         allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels],
                     }
                 ],
             });
 
-            message.reply(`✅ Canal privado **${canalCreado}** creado.`);
-            console.log(`✅ Canal ${nombreCanal} creado correctamente.`);
+            await aviso.edit(`✅ **Canal creado:** ${canalCreado}`);
 
         } catch (error) {
             console.error("Error al crear el canal:", error);
-            message.reply("❌ Hubo un error al crear el canal. Revisa los permisos del bot.");
+            await aviso.edit("❌ Error. Asegúrate de que el rol de mi bot esté ARRIBA de todo en la lista de roles.");
         }
     }
 });
