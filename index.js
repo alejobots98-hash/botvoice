@@ -10,65 +10,78 @@ const client = new Client({
 });
 
 client.on('ready', () => {
-    console.log(`✅ Bot encendido como ${client.user.tag}`);
+    console.log(`✅ Bot de Voz encendido como ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
+    // Ignorar mensajes de otros bots
     if (message.author.bot) return;
 
+    // Comando !create
     if (message.content.startsWith('!create')) {
         
-        // --- CONFIGURACIÓN ---
+        // IDs de los roles autorizados que me pasaste
         const rolesAutorizados = ['1211760228673257524', '1494517342242340864'];
-        const ownerID = message.guild.ownerId; // Detecta automáticamente al dueño del server
         
-        const tieneRol = message.member.roles.cache.some(role => rolesAutorizados.includes(role.id));
-        const esOwner = message.author.id === ownerID;
+        // Validación de permisos (Dueño del server o Roles específicos)
+        const esOwner = message.author.id === message.guild.ownerId;
+        const tieneRol = message.member.roles.cache.some(r => rolesAutorizados.includes(r.id));
 
-        // LOG DE SEGURIDAD PARA RAILWAY
-        console.log(`Intento de: ${message.author.tag} | ID: ${message.author.id} | Es Owner: ${esOwner} | Tiene Rol: ${tieneRol}`);
+        // Registro en la consola de Railway para monitoreo
+        console.log(`> Intento de ${message.author.tag} | Owner: ${esOwner} | Rol: ${tieneRol}`);
 
-        // Si no es el dueño Y no tiene el rol, afuera.
         if (!esOwner && !tieneRol) {
-            console.log(`❌ Denegado para ${message.author.tag}. No es owner ni tiene los roles.`);
+            console.log(`❌ Acceso denegado para ${message.author.tag}`);
             return; 
         }
 
         const args = message.content.split(' ');
-        const nombreCanal = args.slice(1).join('-'); 
+        const nombreCanal = args.slice(1).join('-') || 'Sala-Vaganciera'; 
 
-        if (!nombreCanal) {
-            return message.reply("⚠️ Indica el nombre: `!create nombre`.");
-        }
-
+        // 1. Mensaje de aviso inicial
         const aviso = await message.reply("⏳ Creando vc vaganciero...");
+
+        const categoriaID = '1390861046658498671';
 
         try {
             const canalCreado = await message.guild.channels.create({
                 name: nombreCanal,
-                type: ChannelType.GuildText,
-                parent: '1390861046658498671',
+                type: ChannelType.GuildVoice, // TIPO VOZ
+                parent: categoriaID,
                 permissionOverwrites: [
                     {
-                        id: message.guild.id, 
-                        deny: [PermissionFlagsBits.ViewChannel],
+                        id: message.guild.id, // Bloquea a todo el servidor
+                        deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect],
                     },
                     {
-                        id: message.author.id, 
-                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+                        id: message.author.id, // Permite al creador
+                        allow: [
+                            PermissionFlagsBits.ViewChannel, 
+                            PermissionFlagsBits.Connect, 
+                            PermissionFlagsBits.Speak, 
+                            PermissionFlagsBits.Stream,
+                            PermissionFlagsBits.MuteMembers, // Opcional: para que el creador pueda mutear en su sala
+                            PermissionFlagsBits.MoveMembers
+                        ],
                     },
                     {
-                        id: client.user.id, 
-                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels],
+                        id: client.user.id, // Permite al bot gestionar el canal
+                        allow: [
+                            PermissionFlagsBits.ViewChannel, 
+                            PermissionFlagsBits.Connect, 
+                            PermissionFlagsBits.ManageChannels
+                        ],
                     }
                 ],
             });
 
-            await aviso.edit(`✅ **Canal creado:** ${canalCreado}`);
+            // 2. Edita el mensaje para confirmar que terminó y menciona el canal
+            await aviso.edit(`✅ **Canal de voz creado:** ${canalCreado}`);
+            console.log(`✅ ¡Canal de voz "${nombreCanal}" creado con éxito para ${message.author.tag}!`);
 
         } catch (error) {
-            console.error("Error al crear el canal:", error);
-            await aviso.edit("❌ Error. Asegúrate de que el rol de mi bot esté ARRIBA de todo en la lista de roles.");
+            console.error("ERROR AL CREAR CANAL DE VOZ:", error);
+            await aviso.edit("❌ Error. Asegúrate de que mi rol (VG-VOICE) esté ARRIBA de todo en Ajustes del Servidor > Roles.");
         }
     }
 });
